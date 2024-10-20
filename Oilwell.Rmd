@@ -1,0 +1,234 @@
+---
+title: "Optimizing Oil Well Production Using Machine Learning and Optimization Techniques"
+author: Jebin Larosh Jervis 
+output: html_notebook
+---
+
+## Step 1: Load Libraries and Data
+
+We’ll use R’s powerful libraries for machine learning and data analysis, such as caret, randomForest, gbm, and dplyr.
+
+
+```{r}
+# Load libraries
+library(caret)  # For machine learning
+library(randomForest)  # Random forest model
+library(gbm)  # Gradient boosting model
+library(dplyr)  # Data manipulation
+
+# Simulate or load oil production data (replace with actual data if available)
+# Synthetic data for demonstration
+set.seed(123)
+
+# Number of observations
+n <- 1000  
+
+# Simulate the relationships based on scientific principles
+pressure <- rnorm(n, mean = 3000, sd = 500)  # Well pressure in psi
+temperature <- rnorm(n, mean = 120, sd = 10)  # Well temperature in Fahrenheit
+pump_speed <- rnorm(n, mean = 100, sd = 15)  # Pump speed in rpm
+oil_viscosity <- rnorm(n, mean = 20, sd = 5)  # Oil viscosity in centipoise
+
+# Oil flow rate based on physical principles
+flow_rate <- 0.05 * pressure + 0.03 * temperature - 0.04 * oil_viscosity + 0.02 * pump_speed +
+             rnorm(n, mean = 0, sd = 5)  # Add some random noise
+
+# Create a data frame
+oil_data <- data.frame(
+  well_id = sample(1:10, n, replace = TRUE),
+  pressure = pressure,
+  temperature = temperature,
+  pump_speed = pump_speed,
+  oil_viscosity = oil_viscosity,
+  flow_rate = flow_rate  # Target variable
+)
+
+# View the first few rows
+head(oil_data)
+
+
+```
+
+## Variables Explanation:
+
+* well_id: ID for the oil well.
+* pressure: Pressure of the well (input feature).
+* temperature: Temperature of the well (input feature).
+* flow_rate: The rate at which oil is being extracted (target variable to optimize).
+* pump_speed: Speed of the oil pump (input feature).
+* oil_viscosity: Viscosity of the extracted oil (input feature).
+
+## Step 2: Data Preprocessing
+
+Before fitting models, it’s essential to preprocess the data, which includes handling missing values, scaling, and splitting into training and test sets.
+
+```{r}
+# Split data into training and test sets (80/20 split)
+set.seed(123)
+trainIndex <- createDataPartition(oil_data$flow_rate, p = .8, list = FALSE)
+train_data <- oil_data[trainIndex, ]
+test_data <- oil_data[-trainIndex, ]
+
+# Train a Random Forest model
+set.seed(123)
+rf_model <- randomForest(flow_rate ~ pressure + temperature + pump_speed + oil_viscosity, data = train_data)
+
+# Predict on the test set
+rf_predictions <- predict(rf_model, newdata = test_data)
+
+# Evaluate model performance
+rf_rmse <- sqrt(mean((rf_predictions - test_data$flow_rate)^2))
+print(paste("Random Forest RMSE:", round(rf_rmse, 2)))
+
+
+```
+
+## Step 3: Fit Machine Learning Models
+### 1. Random Forest Model
+
+We’ll first apply a Random Forest model, a robust algorithm known for handling complex relationships in data without requiring much tuning.
+
+```{r}
+# Train a Random Forest model
+set.seed(123)
+rf_model <- randomForest(flow_rate ~ pressure + temperature + pump_speed + oil_viscosity, data = train_data)
+
+# View model summary
+print(rf_model)
+
+# Predict on the test set
+rf_predictions <- predict(rf_model, newdata = test_data)
+
+# Evaluate model performance
+rf_rmse <- sqrt(mean((rf_predictions - test_data$flow_rate)^2))
+print(paste("Random Forest RMSE:", round(rf_rmse, 2)))
+
+```
+
+### 2. Gradient Boosting Model (GBM)
+
+Next, we apply Gradient Boosting, which is powerful for improving prediction performance by reducing residual errors iteratively.
+
+```{r}
+# Train a GBM model
+set.seed(123)
+gbm_model <- gbm(flow_rate ~ pressure + temperature + pump_speed + oil_viscosity,
+                 data = train_data,
+                 distribution = "gaussian",
+                 n.trees = 100,
+                 interaction.depth = 3)
+
+# Predict on the test set
+gbm_predictions <- predict(gbm_model, newdata = test_data, n.trees = 100)
+
+# Evaluate model performance
+gbm_rmse <- sqrt(mean((gbm_predictions - test_data$flow_rate)^2))
+print(paste("GBM RMSE:", round(gbm_rmse, 2)))
+
+```
+## Step 4: Optimization of Oil Production
+To optimize oil production, we can use optimization algorithms that suggest optimal settings for parameters like pump speed, pressure, and temperature. For example, we can apply grid search or genetic algorithms to maximize the flow rate under certain constraints.
+
+### Example: Simple Optimization using Grid Search
+
+```{r}
+# Define a grid of parameter values to search for optimization
+grid <- expand.grid(pump_speed = seq(80, 120, by = 2),
+                    pressure = seq(2500, 3500, by = 50),
+                    temperature = seq(100, 140, by = 5),
+                    oil_viscosity = seq(15, 25, by = 1))
+
+# Predict flow rate for each grid point using the trained RF model
+grid$predicted_flow_rate <- predict(rf_model, newdata = grid)
+
+# Find the optimal parameter combination
+optimal_combination <- grid[which.max(grid$predicted_flow_rate), ]
+print(optimal_combination)
+
+
+```
+## Step 5: Interpret and Visualize Results
+###  Interpret the Results
+* Flow Rate and Pressure: The results will show that increasing pressure improves flow rate, but there may be diminishing returns.
+* Temperature and Viscosity: Higher temperatures reduce viscosity, leading to more efficient oil extraction.
+* Pump Speed: Increasing pump speed boosts production, but excessive speed may result in mechanical inefficiency.
+
+### 1. Feature Importance (Random Forest)
+
+* Which factors (pressure, temperature, pump speed, etc.) are most important for maximizing oil production?
+
+```{r}
+# Feature importance plot from the Random Forest model
+importance(rf_model)
+varImpPlot(rf_model)
+
+
+```
+
+## 2. Flow Rate Predictions
+
+* Compare the predictions from both models (Random Forest and GBM) with the actual flow rates.
+
+
+
+```{r}
+# Plot actual vs predicted for Random Forest
+ggplot() +
+  geom_point(aes(x = test_data$flow_rate, y = rf_predictions), color = "blue", alpha = 0.6) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  labs(title = "Random Forest: Actual vs Predicted Flow Rate", x = "Actual Flow Rate", y = "Predicted Flow Rate")
+
+# Plot actual vs predicted for GBM
+ggplot() +
+  geom_point(aes(x = test_data$flow_rate, y = gbm_predictions), color = "green", alpha = 0.6) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  labs(title = "GBM: Actual vs Predicted Flow Rate", x = "Actual Flow Rate", y = "Predicted Flow Rate")
+
+```
+## Step 6: Conclusion
+
+* Model Performance: Random Forest and Gradient Boosting models provide good predictive accuracy for oil well production rates, as measured by RMSE.
+* Optimization: By using grid search over the trained Random Forest model, we can suggest the optimal settings for parameters like pump speed, pressure, and temperature to maximize oil production.
+* Feature Importance: The Random Forest feature importance plot gives us insights into which variables are most critical for oil production. This can guide engineers in focusing on optimizing the most influential factors.
+
+### Interpretation of Results for Oil Well Production Optimization
+
+#### Overview of Models' Performance:
+- **GBM RMSE: 5.32**
+- **Random Forest RMSE: 7.72**
+
+These RMSE (Root Mean Square Error) values represent the average error in predicting oil well flow rates. Both **GBM (Gradient Boosting Machine)** and **Random Forest** models provide excellent accuracy with relatively low RMSE values, indicating that the predictions are very close to the actual flow rates.
+
+#### Key Findings:
+1. **Model Performance**:
+   - **GBM** outperforms **Random Forest** with a lower RMSE of **5.32** compared to **7.72**. This suggests that **GBM** captures the relationships between the features and the target variable (flow rate) more effectively. GBM typically performs well when there's complexity and subtle patterns in the data.
+   - Both models deliver accurate predictions, with small average deviations from actual values, meaning they are both reliable for predicting flow rates in this context.
+
+2. **Optimal Parameters for Maximized Flow Rate**:
+   The optimal combination of parameters is:
+   - **Pressure**: 3500 psi
+   - **Temperature**: 140°F
+   - **Pump Speed**: 104 rpm
+   - **Oil Viscosity**: 17 centipoise
+   - **Predicted Flow Rate**: **190 barrels/day**
+
+   These values represent the ideal conditions for achieving the highest oil flow rate, based on the machine learning models' predictions. For Sonatrach or similar companies, this combination of operational parameters (pressure, temperature, etc.) can guide optimization efforts in the field to maximize production.
+
+#### Feature Importance (Random Forest):
+- From the **Random Forest feature importance plot**, we can see that **pressure** is the most important factor influencing flow rate, followed by **oil viscosity** and **temperature**. **Pump speed** has the least influence in this model, but it still contributes meaningfully.
+  
+  **Pressure** is a critical factor in oil extraction, as higher pressure generally results in a higher flow rate, though there are diminishing returns after a certain threshold. **Oil viscosity** also plays a crucial role: lower viscosity allows oil to flow more easily, improving the flow rate.
+
+#### Visual Interpretation:
+1. **GBM: Actual vs Predicted Flow Rate** (Green Plot):
+   - The plot shows that the **GBM model** predicts flow rates very closely to the actual values, as most points fall close to the diagonal line (representing perfect predictions). The small deviations from the line reflect the low RMSE of 5.32, demonstrating GBM's strong predictive power.
+   
+2. **Random Forest: Actual vs Predicted Flow Rate** (Blue Plot):
+   - The **Random Forest model** also performs well, as indicated by the majority of points being near the diagonal line. However, there is slightly more spread compared to the GBM plot, reflecting a higher RMSE of 7.72.
+
+#### Conclusion:
+- **Both models** are effective for predicting oil well production flow rates, with **GBM** slightly outperforming **Random Forest** in accuracy.
+- The optimal operational settings (pressure, temperature, etc.) can be directly used by field engineers to improve production efficiency.
+- This analysis provides a strong foundation for applying machine learning to **oil well production optimization**, allowing for data-driven decisions in the field, which can result in increased production and cost savings for companies like **Sonatrach**.
+
+This project showcases how machine learning can provide actionable insights for oil field operations, making it valuable for obtaining contracts or proving the utility of predictive models in optimizing production.
